@@ -13,11 +13,12 @@ use rand::RngCore;
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 use std::{
     env, fs,
     net::{IpAddr, SocketAddr},
-    path::PathBuf,
-    process::Command,
+    path::{Path as FsPath, PathBuf},
     sync::{Arc, Mutex},
 };
 use tokio::net::TcpListener;
@@ -29,6 +30,7 @@ type HmacSha256 = Hmac<Sha256>;
 const USER_ENV: &str = "BRAIN_ADMIN_USERNAME";
 const PASS_ENV: &str = "BRAIN_ADMIN_PASSWORD";
 const HOME_ENV: &str = "BRAIN_HOME";
+const CREDENTIALS_FILE: &str = "credentials.json";
 const SESSION_COOKIE: &str = "brain_session";
 const MAX_BAD_LOGINS: i64 = 5;
 
@@ -62,6 +64,12 @@ struct Settings {
 
 #[derive(Debug, Deserialize)]
 struct LoginRequest {
+    username: String,
+    password: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AdminCredentials {
     username: String,
     password: String,
 }
@@ -192,6 +200,8 @@ fn cli(args: &[String]) -> Result<()> {
     match args.first().map(String::as_str) {
         Some("help") | Some("--help") | Some("-h") => print_help(),
         Some("credentials") if args.get(1).map(String::as_str) == Some("status") => {
+            let app_home = app_home()?;
+            let credentials_path = credentials_path(&app_home);
             println!(
                 "{USER_ENV}: {}",
                 env::var(USER_ENV).map(|_| "set").unwrap_or("missing")
@@ -199,6 +209,19 @@ fn cli(args: &[String]) -> Result<()> {
             println!(
                 "{PASS_ENV}: {}",
                 env::var(PASS_ENV).map(|_| "set").unwrap_or("missing")
+            );
+            println!(
+                "credentials file: {} ({})",
+                if credentials_path.exists() {
+                    "set"
+                } else {
+                    "missing"
+                },
+                credentials_path.display()
+            );
+            println!(
+                "login credentials: {}",
+                credentials(&app_home).map(|_| "set").unwrap_or("missing")
             );
             Ok(())
         }
@@ -219,9 +242,9 @@ fn print_help() -> Result<()> {
     println!();
     println!("Commands:");
     println!("  brain                         Start the web server");
-    println!("  brain credentials status      Show whether admin env vars are set");
+    println!("  brain credentials status      Show whether admin credentials are set");
     println!("  brain credentials set USER PASS");
-    println!("                                Persist admin credentials for this OS user");
+    println!("                                Persist admin credentials in the app home");
     println!();
     println!("Environment:");
     println!("  {USER_ENV}       Admin login username");
@@ -232,46 +255,13 @@ fn print_help() -> Result<()> {
 }
 
 fn set_credentials(username: &str, password: &str) -> Result<()> {
-    if cfg!(windows) {
-        Command::new("setx").args([USER_ENV, username]).status()?;
-        Command::new("setx").args([PASS_ENV, password]).status()?;
-        println!("Credentials written with setx. Open a new terminal before starting brain.");
-        return Ok(());
-    }
-
-    let home = dirs_next::home_dir().ok_or_else(|| anyhow!("could not find home directory"))?;
-    let profile = if cfg!(target_os = "macos") {
-        home.join(".zshenv")
-    } else {
-        home.join(".profile")
-    };
-    let block = format!(
-        "\n# brain admin credentials\nexport {USER_ENV}={}\nexport {PASS_ENV}={}\n",
-        shell_quote(username),
-        shell_quote(password)
+    let app_home = app_home()?;
+    write_credentials(&app_home, username, password)?;
+    println!(
+        "Credentials written to {}",
+        credentials_path(&app_home).display()
     );
-    fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&profile)?
-        .write_all_ext(block.as_bytes())?;
-    println!("Credentials written to {}", profile.display());
-    println!("Open a new terminal or run: source {}", profile.display());
     Ok(())
-}
-
-trait WriteAllExt {
-    fn write_all_ext(&mut self, buf: &[u8]) -> std::io::Result<()>;
-}
-
-impl<T: std::io::Write> WriteAllExt for T {
-    fn write_all_ext(&mut self, buf: &[u8]) -> std::io::Result<()> {
-        std::io::Write::write_all(self, buf)
-    }
-}
-
-fn shell_quote(value: &str) -> String {
-    format!("'{}'", value.replace('\'', "'\\''"))
 }
 
 async fn index(headers: HeaderMap, State(state): State<AppState>) -> Response {
@@ -321,10 +311,10 @@ async fn login(
         Err(err) => return json_error(StatusCode::INTERNAL_SERVER_ERROR, err.to_string()),
     }
 
-    let Ok((username, password)) = credentials() else {
+    let Ok((username, password)) = credentials(&state.app_home) else {
         return json_error(
             StatusCode::SERVICE_UNAVAILABLE,
-            format!("{USER_ENV} and {PASS_ENV} must be set before login"),
+            "admin credentials must be set with `brain credentials set USER PASS` before login",
         );
     };
 
@@ -609,8 +599,44 @@ fn record_bad_login(db: &Connection, ip: IpAddr) -> Result<()> {
     Ok(())
 }
 
-fn credentials() -> Result<(String, String)> {
-    Ok((env::var(USER_ENV)?, env::var(PASS_ENV)?))
+fn credentials(app_home: &FsPath) -> Result<(String, String)> {
+    if let (Ok(username), Ok(password)) = (env::var(USER_ENV), env::var(PASS_ENV)) {
+        return Ok((username, password));
+    }
+    let credentials = read_credentials(app_home)?;
+    Ok((credentials.username, credentials.password))
+}
+
+fn credentials_path(app_home: &FsPath) -> PathBuf {
+    app_home.join(CREDENTIALS_FILE)
+}
+
+fn read_credentials(app_home: &FsPath) -> Result<AdminCredentials> {
+    let path = credentials_path(app_home);
+    let content = fs::read_to_string(&path)
+        .with_context(|| format!("could not read credentials from {}", path.display()))?;
+    let credentials = serde_json::from_str::<AdminCredentials>(&content)
+        .with_context(|| format!("credentials file is invalid: {}", path.display()))?;
+    if credentials.username.is_empty() || credentials.password.is_empty() {
+        return Err(anyhow!("credentials file has empty username or password"));
+    }
+    Ok(credentials)
+}
+
+fn write_credentials(app_home: &FsPath, username: &str, password: &str) -> Result<()> {
+    if username.is_empty() || password.is_empty() {
+        return Err(anyhow!("username and password are required"));
+    }
+    fs::create_dir_all(app_home)?;
+    let path = credentials_path(app_home);
+    let credentials = AdminCredentials {
+        username: username.to_string(),
+        password: password.to_string(),
+    };
+    fs::write(&path, serde_json::to_string_pretty(&credentials)?)?;
+    #[cfg(unix)]
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o600))?;
+    Ok(())
 }
 
 fn authenticated(headers: &HeaderMap, state: &AppState) -> bool {
@@ -624,7 +650,7 @@ fn authenticated(headers: &HeaderMap, state: &AppState) -> bool {
     }) else {
         return false;
     };
-    let Ok((username, _)) = credentials() else {
+    let Ok((username, _)) = credentials(&state.app_home) else {
         return false;
     };
     token == sign_session(&username, state)
@@ -1274,5 +1300,17 @@ mod tests {
             record_bad_login(&db, ip).unwrap();
         }
         assert!(is_ip_banned(&db, ip).unwrap());
+    }
+
+    #[test]
+    fn credentials_round_trip_through_app_home() {
+        let temp = tempfile::tempdir().unwrap();
+
+        write_credentials(temp.path(), "admin", "change-this").unwrap();
+        let credentials = read_credentials(temp.path()).unwrap();
+
+        assert_eq!(credentials.username, "admin");
+        assert_eq!(credentials.password, "change-this");
+        assert!(credentials_path(temp.path()).exists());
     }
 }

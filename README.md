@@ -10,26 +10,26 @@ cargo install --path .
 
 ## Credentials
 
-The admin login is read from environment variables:
+Set the admin login with the CLI:
+
+```sh
+brain credentials set admin change-this
+```
+
+This writes `credentials.json` inside the app home (`BRAIN_HOME`, or `~/.brain` by default), so the web server can read the same credentials no matter which directory the binary is started from.
+
+Environment variables are still supported and take priority over the credentials file:
 
 ```sh
 export BRAIN_ADMIN_USERNAME='admin'
 export BRAIN_ADMIN_PASSWORD='change-this'
 ```
 
-Or let the CLI persist them for your operating system user:
-
-```sh
-brain credentials set admin change-this
-```
-
-Check whether the current terminal can see them:
+Check whether credentials are available:
 
 ```sh
 brain credentials status
 ```
-
-On Windows the CLI uses `setx`. On macOS it appends exports to `~/.zshenv`. On Linux it appends exports to `~/.profile`. Open a new terminal after setting credentials.
 
 ## Run
 
