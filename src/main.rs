@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use axum::{
-    extract::{ConnectInfo, Path, Query, State},
+    extract::{ConnectInfo, DefaultBodyLimit, Path, Query, State},
     http::{header, HeaderMap, HeaderValue, StatusCode},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
@@ -33,6 +33,7 @@ const HOME_ENV: &str = "BRAIN_HOME";
 const CREDENTIALS_FILE: &str = "credentials.json";
 const SESSION_COOKIE: &str = "brain_session";
 const MAX_BAD_LOGINS: i64 = 5;
+const IMPORT_BODY_LIMIT_BYTES: usize = 50 * 1024 * 1024;
 
 #[derive(Clone)]
 struct AppState {
@@ -177,7 +178,7 @@ async fn main() -> Result<()> {
         .route("/api/projects/:project/import", post(import_idea))
         .route(
             "/api/projects/:project/import-markdown",
-            post(import_markdown),
+            post(import_markdown).layer(DefaultBodyLimit::max(IMPORT_BODY_LIMIT_BYTES)),
         )
         .route("/api/search", get(search_ideas))
         .route("/api/related", get(related_ideas))

@@ -40,6 +40,7 @@
     importMarkdownFile: document.querySelector("#importMarkdownFile"),
     copyBrain: document.querySelector("#copyBrain"),
     exportBrain: document.querySelector("#exportBrain"),
+    logout: document.querySelector("#logout"),
     recordButton: document.querySelector("#recordButton"),
     status: document.querySelector("#status"),
     activeMode: document.querySelector("#activeMode"),
@@ -79,7 +80,15 @@
       location.href = "/login";
       return null;
     }
-    if (!res.ok) throw new Error((await res.json()).error);
+    if (!res.ok) {
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const payload = await res.json();
+        throw new Error(payload.error || res.statusText);
+      }
+      const message = await res.text();
+      throw new Error(message.trim() || res.statusText || "Request failed");
+    }
     return res.status === 204 ? null : res.json();
   }
 
@@ -636,6 +645,14 @@
     downloadMarkdown(ideasToMarkdown(ideas), exportFilename, "all brain ideas");
   }
 
+  async function logout() {
+    try {
+      await api("/api/logout", { method: "POST" });
+    } finally {
+      location.href = "/login";
+    }
+  }
+
   async function copyIdea(id) {
     const idea = findIdea(id);
     if (idea) await copyText(idea.markdown, idea.title);
@@ -759,6 +776,7 @@
   });
   els.copyBrain.addEventListener("click", copyBrain);
   els.exportBrain.addEventListener("click", exportBrain);
+  els.logout.addEventListener("click", logout);
   els.recordButton.addEventListener("click", () => state.recording ? stopRecording() : startRecording());
   els.toggleRecording.addEventListener("click", () => state.recording ? stopRecording() : startRecording());
   els.saveIdea.addEventListener("click", saveIdea);
