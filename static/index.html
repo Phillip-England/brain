@@ -15,17 +15,11 @@
           <button data-page="record" class="active" type="button">Record</button>
           <button data-page="ideas" type="button">Ideas</button>
           <button data-page="projects" type="button">Projects</button>
-          <button data-page="import" type="button">Import</button>
+          <button data-page="import" type="button">Transfer</button>
           <button data-page="controls" type="button">Controls</button>
           <button data-page="settings" type="button">Settings</button>
         </div>
         <div class="nav-actions">
-          <button id="copyProject" class="nav-action" type="button">Copy project</button>
-          <button id="exportProject" class="nav-action" type="button">Export project</button>
-          <button id="importMarkdown" class="nav-action" type="button">Import .md</button>
-          <input id="importMarkdownFile" type="file" accept=".md,text/markdown,text/plain" hidden />
-          <button id="copyBrain" class="nav-action" type="button">Copy all</button>
-          <button id="exportBrain" class="nav-action" type="button">Export all</button>
           <button id="logout" class="nav-action" type="button">Logout</button>
         </div>
       </nav>
@@ -89,7 +83,42 @@
         <div id="projectsList" class="project-list"></div>
       </section>
 
-      <section id="importPage" class="page import-page" hidden>
+      <section id="importPage" class="page transfer-page" hidden>
+        <div class="transfer-grid">
+          <section class="transfer-panel" aria-labelledby="projectTransferTitle">
+            <div>
+              <h2 id="projectTransferTitle">Current project</h2>
+              <p id="transferProjectLabel">No project selected</p>
+            </div>
+            <div class="transfer-actions">
+              <button id="copyProject" class="button secondary" type="button">Copy project</button>
+              <button id="exportProject" class="button secondary" type="button">Export project</button>
+            </div>
+          </section>
+
+          <section class="transfer-panel" aria-labelledby="brainTransferTitle">
+            <div>
+              <h2 id="brainTransferTitle">Whole brain</h2>
+              <p>All projects</p>
+            </div>
+            <div class="transfer-actions">
+              <button id="copyBrain" class="button secondary" type="button">Copy all</button>
+              <button id="exportBrain" class="button secondary" type="button">Export all</button>
+            </div>
+          </section>
+
+          <section class="transfer-panel" aria-labelledby="importTransferTitle">
+            <div>
+              <h2 id="importTransferTitle">Import</h2>
+              <p>Markdown file</p>
+            </div>
+            <div class="transfer-actions">
+              <button id="importMarkdown" class="button" type="button">Import .md</button>
+            </div>
+          </section>
+        </div>
+
+        <input id="importMarkdownFile" type="file" accept=".md,text/markdown,text/plain" hidden />
         <form id="importTextForm" class="import-form">
           <textarea id="importTextInput" class="import-textarea" spellcheck="true" placeholder="# First idea&#10;&#10;Paragraph text.&#10;&#10;# Second idea&#10;&#10;Paragraph text."></textarea>
           <div class="import-actions">

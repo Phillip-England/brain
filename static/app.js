@@ -34,6 +34,7 @@
     },
     navButtons: document.querySelectorAll("[data-page]"),
     currentProjectLabel: document.querySelector("#currentProjectLabel"),
+    transferProjectLabel: document.querySelector("#transferProjectLabel"),
     copyProject: document.querySelector("#copyProject"),
     exportProject: document.querySelector("#exportProject"),
     importMarkdown: document.querySelector("#importMarkdown"),
@@ -130,6 +131,8 @@
   function renderProjectLabel() {
     els.currentProjectLabel.textContent = state.currentProject ? state.currentProject : "No project selected";
     els.currentProjectLabel.classList.toggle("empty", !state.currentProject);
+    els.transferProjectLabel.textContent = state.currentProject ? state.currentProject : "No project selected";
+    els.transferProjectLabel.classList.toggle("empty", !state.currentProject);
   }
 
   async function loadProjects() {
@@ -239,7 +242,7 @@
     els.saveIdea.disabled = !state.currentProject;
     els.copyProject.disabled = !state.currentProject;
     els.exportProject.disabled = !state.currentProject;
-    els.importMarkdown.disabled = !state.currentProject;
+    els.importMarkdown.disabled = false;
     els.modeButtons.forEach((button) => {
       const active = button.dataset.modeKind === state.activeKind && Number(button.dataset.modeLevel) === state.activeLevel;
       button.classList.toggle("is-active", active);

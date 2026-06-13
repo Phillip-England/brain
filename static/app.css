@@ -268,7 +268,7 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 
 .ideas-page,
 .management-page,
-.import-page,
+.transfer-page,
 .controls-page {
   display: grid;
   align-content: start;
@@ -455,9 +455,51 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   grid-template-columns: 1fr;
 }
 
+.transfer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.transfer-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.transfer-panel h2 {
+  margin: 0;
+  font-size: 0.96rem;
+  line-height: 1.2;
+}
+
+.transfer-panel p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transfer-panel p.empty {
+  color: var(--danger);
+}
+
+.transfer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .import-textarea {
   width: 100%;
-  min-height: min(62vh, 620px);
+  min-height: min(50vh, 520px);
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -547,17 +589,24 @@ kbd {
 
 @media (max-width: 980px) {
   .navbar {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
-  .nav-links,
-  .nav-actions {
+  .nav-links {
     grid-column: 1 / -1;
     justify-content: stretch;
+  }
+  .nav-actions {
+    grid-column: 3;
+    grid-row: 1;
+    justify-content: flex-end;
   }
   .nav-links button,
   .nav-action {
     flex: 1;
     padding: 8px 5px;
+  }
+  .nav-action {
+    flex: 0 0 auto;
   }
   .guide {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -583,16 +632,20 @@ kbd {
   .page-bar,
   .bulk-actions,
   .inline-form,
+  .transfer-grid,
+  .transfer-panel,
   .import-actions,
   .project-card {
     grid-template-columns: 1fr;
   }
   .project-actions,
+  .transfer-actions,
   .import-actions,
   .inline-actions {
     justify-content: stretch;
   }
   .project-actions button,
+  .transfer-actions button,
   .import-actions button,
   .inline-actions button {
     flex: 1;
