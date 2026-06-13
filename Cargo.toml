@@ -1,0 +1,28 @@
+[package]
+name = "brain"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+axum = { version = "0.7", features = ["macros"] }
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+dirs-next = "2.0"
+hmac = "0.12"
+rand = "0.8"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread", "net"] }
+tower-http = { version = "0.6", features = ["trace"] }
+uuid = { version = "1.0", features = ["v4"] }
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+
+[dev-dependencies]
+tempfile = "3.10"

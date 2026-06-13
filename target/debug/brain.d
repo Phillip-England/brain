@@ -1,0 +1,1 @@
+/Users/phillipengland/Desktop/src/brain/target/debug/brain: /Users/phillipengland/Desktop/src/brain/src/main.rs /Users/phillipengland/Desktop/src/brain/static/app.css /Users/phillipengland/Desktop/src/brain/static/app.js /Users/phillipengland/Desktop/src/brain/static/index.html /Users/phillipengland/Desktop/src/brain/static/login.html

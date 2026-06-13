@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>brain</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <nav class="navbar" aria-label="Primary">
+        <a class="brand" href="/">brain</a>
+        <div id="currentProjectLabel" class="project-label">No project selected</div>
+        <div class="nav-links">
+          <button data-page="record" class="active" type="button">Record</button>
+          <button data-page="ideas" type="button">Ideas</button>
+          <button data-page="projects" type="button">Projects</button>
+          <button data-page="import" type="button">Import</button>
+          <button data-page="controls" type="button">Controls</button>
+          <button data-page="settings" type="button">Settings</button>
+        </div>
+        <div class="nav-actions">
+          <button id="copyProject" class="nav-action" type="button">Copy project</button>
+          <button id="exportProject" class="nav-action" type="button">Export project</button>
+          <button id="importMarkdown" class="nav-action" type="button">Import .md</button>
+          <input id="importMarkdownFile" type="file" accept=".md,text/markdown,text/plain" hidden />
+          <button id="copyBrain" class="nav-action" type="button">Copy all</button>
+          <button id="exportBrain" class="nav-action" type="button">Export all</button>
+        </div>
+      </nav>
+
+      <section id="recordPage" class="page recording-page">
+        <div class="recording-header">
+          <button id="recordButton" class="record-button" type="button" aria-label="Start recording">
+            <span class="record-dot" aria-hidden="true"></span>
+          </button>
+          <div class="status-row" aria-live="polite">
+            <div id="status" class="status">Select a project, then press Enter.</div>
+            <div id="activeMode" class="active-mode">H1</div>
+          </div>
+        </div>
+
+        <section class="workspace" aria-label="Markdown workspace">
+          <textarea id="markdown" class="markdown-view" spellcheck="true" aria-label="Generated markdown" placeholder="Press Enter to begin."></textarea>
+        </section>
+
+        <section class="bottom-controls" aria-label="Recording controls">
+          <button id="toggleRecording" class="control-button primary-control" type="button">Start</button>
+          <div class="mode-controls" role="group" aria-label="Markdown block type">
+            <button class="control-button mode-button" type="button" data-mode-kind="heading" data-mode-level="1">H1</button>
+            <button class="control-button mode-button" type="button" data-mode-kind="paragraph" data-mode-level="0">P</button>
+          </div>
+          <button id="undoBlock" class="control-button" type="button">Undo</button>
+          <button id="saveIdea" class="control-button save-control" type="button">Save</button>
+        </section>
+      </section>
+
+      <section id="ideasPage" class="page ideas-page" hidden>
+        <div class="page-bar">
+          <input id="searchInput" class="field" placeholder="Search this project" />
+          <div class="mode-toggle" role="radiogroup" aria-label="Idea selection mode">
+            <label>
+              <input id="browseMode" name="ideaMode" type="radio" value="browse" checked />
+              <span>Browse</span>
+            </label>
+            <label>
+              <input id="selectMode" name="ideaMode" type="radio" value="select" />
+              <span>Select</span>
+            </label>
+          </div>
+        </div>
+        <div id="bulkActions" class="bulk-actions" hidden>
+          <span id="selectedCount">0 selected</span>
+          <button id="selectAllIdeas" class="button secondary" type="button">Select all project</button>
+          <button id="copySelected" class="button secondary" type="button">Copy selected</button>
+          <button id="exportSelected" class="button secondary" type="button">Export selected</button>
+          <button id="deleteSelected" class="button danger-button" type="button">Delete selected</button>
+          <button id="clearSelection" class="button secondary" type="button">Clear</button>
+        </div>
+        <div id="ideasList" class="idea-list"></div>
+      </section>
+
+      <section id="projectsPage" class="page management-page" hidden>
+        <form id="createProject" class="inline-form">
+          <input name="name" class="field" placeholder="New project name" required />
+          <button class="button" type="submit">Create</button>
+        </form>
+        <div id="projectsList" class="project-list"></div>
+      </section>
+
+      <section id="importPage" class="page import-page" hidden>
+        <form id="importTextForm" class="import-form">
+          <textarea id="importTextInput" class="import-textarea" spellcheck="true" placeholder="# First idea&#10;&#10;Paragraph text.&#10;&#10;# Second idea&#10;&#10;Paragraph text."></textarea>
+          <div class="import-actions">
+            <button class="button" type="submit">Import text</button>
+            <button id="pasteImportClipboard" class="button secondary" type="button">Paste clipboard</button>
+            <button id="clearImportText" class="button secondary" type="button">Clear</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="controlsPage" class="page controls-page" hidden>
+        <section class="guide" aria-label="Recording controls">
+          <div><kbd>Enter</kbd><span>start recording</span></div>
+          <div><kbd>\</kbd><span>stop recording</span></div>
+          <div><kbd>S</kbd><span>save idea and clear board</span></div>
+          <div><kbd>U</kbd><span>undo last block</span></div>
+          <div><kbd>1</kbd><span># heading</span></div>
+          <div><kbd>P</kbd><span>paragraph</span></div>
+        </section>
+      </section>
+
+      <section id="settingsPage" class="page management-page" hidden>
+        <form id="settingsForm" class="settings-form">
+          <label for="brainDir">Brain directory</label>
+          <input id="brainDir" name="brain_dir" class="field" required />
+          <button class="button" type="submit">Save settings</button>
+        </form>
+        <dl class="settings-readout">
+          <dt>App home</dt>
+          <dd id="appHome"></dd>
+        </dl>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
