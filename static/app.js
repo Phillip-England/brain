@@ -29,12 +29,13 @@
       ideas: document.querySelector("#ideasPage"),
       projects: document.querySelector("#projectsPage"),
       import: document.querySelector("#importPage"),
+      export: document.querySelector("#exportPage"),
       controls: document.querySelector("#controlsPage"),
       settings: document.querySelector("#settingsPage"),
     },
     navButtons: document.querySelectorAll("[data-page]"),
     currentProjectLabel: document.querySelector("#currentProjectLabel"),
-    transferProjectLabel: document.querySelector("#transferProjectLabel"),
+    exportProjectLabel: document.querySelector("#exportProjectLabel"),
     copyProject: document.querySelector("#copyProject"),
     exportProject: document.querySelector("#exportProject"),
     importMarkdown: document.querySelector("#importMarkdown"),
@@ -131,8 +132,8 @@
   function renderProjectLabel() {
     els.currentProjectLabel.textContent = state.currentProject ? state.currentProject : "No project selected";
     els.currentProjectLabel.classList.toggle("empty", !state.currentProject);
-    els.transferProjectLabel.textContent = state.currentProject ? state.currentProject : "No project selected";
-    els.transferProjectLabel.classList.toggle("empty", !state.currentProject);
+    els.exportProjectLabel.textContent = state.currentProject ? state.currentProject : "No project selected";
+    els.exportProjectLabel.classList.toggle("empty", !state.currentProject);
   }
 
   async function loadProjects() {

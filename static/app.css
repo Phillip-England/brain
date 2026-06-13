@@ -268,7 +268,8 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 
 .ideas-page,
 .management-page,
-.transfer-page,
+.import-page,
+.export-page,
 .controls-page {
   display: grid;
   align-content: start;
@@ -455,13 +456,18 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   grid-template-columns: 1fr;
 }
 
-.transfer-grid {
+.import-file-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.export-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 10px;
 }
 
-.transfer-panel {
+.export-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -472,13 +478,13 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   gap: 12px;
 }
 
-.transfer-panel h2 {
+.export-panel h2 {
   margin: 0;
   font-size: 0.96rem;
   line-height: 1.2;
 }
 
-.transfer-panel p {
+.export-panel p {
   margin: 4px 0 0;
   color: var(--muted);
   font-size: 0.82rem;
@@ -487,11 +493,11 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
   white-space: nowrap;
 }
 
-.transfer-panel p.empty {
+.export-panel p.empty {
   color: var(--danger);
 }
 
-.transfer-actions {
+.export-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -632,20 +638,21 @@ kbd {
   .page-bar,
   .bulk-actions,
   .inline-form,
-  .transfer-grid,
-  .transfer-panel,
+  .export-panel,
   .import-actions,
   .project-card {
     grid-template-columns: 1fr;
   }
   .project-actions,
-  .transfer-actions,
+  .import-file-row,
+  .export-actions,
   .import-actions,
   .inline-actions {
     justify-content: stretch;
   }
   .project-actions button,
-  .transfer-actions button,
+  .import-file-row button,
+  .export-actions button,
   .import-actions button,
   .inline-actions button {
     flex: 1;
