@@ -2,6 +2,7 @@
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
   const defaultKind = "heading";
   const defaultLevel = 1;
+  const exportFilename = "BRAIN.md";
 
   const state = {
     page: "record",
@@ -575,7 +576,7 @@
   async function exportCurrentProject() {
     if (!state.currentProject) return setStatus("No project selected.", true);
     const ideas = await projectIdeas(state.currentProject);
-    downloadMarkdown(ideasToMarkdown(ideas), `${filenameSafe(state.currentProject)}-ideas.md`, `${state.currentProject} ideas`);
+    downloadMarkdown(ideasToMarkdown(ideas), exportFilename, `${state.currentProject} ideas`);
   }
 
   async function importMarkdownText(markdown) {
@@ -632,7 +633,7 @@
 
   async function exportBrain() {
     const ideas = await api("/api/search");
-    downloadMarkdown(ideasToMarkdown(ideas), "brain-ideas.md", "all brain ideas");
+    downloadMarkdown(ideasToMarkdown(ideas), exportFilename, "all brain ideas");
   }
 
   async function copyIdea(id) {
@@ -643,7 +644,7 @@
   function exportIdea(id) {
     const idea = findIdea(id);
     if (!idea) return;
-    downloadMarkdown(idea.markdown, `${filenameSafe(idea.project)}-${filenameSafe(idea.title)}.md`, idea.title);
+    downloadMarkdown(idea.markdown, exportFilename, idea.title);
   }
 
   async function copySelected() {
@@ -659,7 +660,7 @@
   }
 
   function exportSelected() {
-    downloadMarkdown(ideasToMarkdown(selectedIdeas()), `${filenameSafe(state.currentProject)}-selected.md`, "selected ideas");
+    downloadMarkdown(ideasToMarkdown(selectedIdeas()), exportFilename, "selected ideas");
   }
 
   async function deleteSelectedIdeas() {
