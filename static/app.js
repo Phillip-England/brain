@@ -196,15 +196,12 @@
   }
 
   function ideaHtml(idea) {
+    const filename = `${filenameSafe(idea.title)}-${idea.id.slice(0, 8)}.md`;
     return `
       <article class="idea-row ${state.selectedIds.has(idea.id) ? "selected" : ""}" data-id="${escapeHtml(idea.id)}">
-        <label class="idea-check" ${state.selectMode ? "" : "hidden"}>
-          <input type="checkbox" data-select-idea="${escapeHtml(idea.id)}" ${state.selectedIds.has(idea.id) ? "checked" : ""} />
-        </label>
         <button class="idea-main" data-open-idea="${escapeHtml(idea.id)}" type="button">
-          <strong>${escapeHtml(idea.title)}</strong>
-          <span>${formatDate(idea.created_at)}</span>
-          <p>${escapeHtml(snippet(idea.markdown))}</p>
+          <strong>${escapeHtml(filename)}</strong>
+          <span>${escapeHtml(idea.title)} · ${formatDate(idea.created_at)}</span>
         </button>
         <div class="idea-expanded" hidden>
           <pre>${escapeHtml(idea.markdown)}</pre>
@@ -214,14 +211,6 @@
           </div>
         </div>
       </article>`;
-  }
-
-  function snippet(markdown) {
-    return markdown
-      .split("\n")
-      .filter((line) => line.trim() && !line.trim().startsWith("#"))
-      .join(" ")
-      .slice(0, 180);
   }
 
   function syncBulkActions() {
@@ -589,8 +578,18 @@
   }
 
   async function importMarkdownText(markdown) {
-    if (!state.currentProject) return setStatus("No project selected.", true);
     if (!markdown?.trim()) return setStatus("No markdown text to import.", true);
+    if (isBrainExport(markdown)) {
+      const result = await api("/api/import-brain", {
+        method: "POST",
+        body: JSON.stringify({ markdown }),
+      });
+      setStatus(`Imported ${result.imported} idea${result.imported === 1 ? "" : "s"} across ${result.projects} project${result.projects === 1 ? "" : "s"}.`);
+      await loadProjects();
+      if (state.page === "ideas") await loadProjectIdeas();
+      return result;
+    }
+    if (!state.currentProject) return setStatus("No project selected.", true);
     const result = await api(`/api/projects/${encodeURIComponent(state.currentProject)}/import-markdown`, {
       method: "POST",
       body: JSON.stringify({ markdown }),
@@ -599,6 +598,10 @@
     await loadProjects();
     if (state.page === "ideas") await loadProjectIdeas();
     return result;
+  }
+
+  function isBrainExport(markdown) {
+    return /^\s*<!--\s*project\s*:/m.test(markdown);
   }
 
   async function importMarkdownFile(file) {
@@ -758,10 +761,6 @@
   els.copyProject.addEventListener("click", copyCurrentProject);
   els.exportProject.addEventListener("click", exportCurrentProject);
   els.importMarkdown.addEventListener("click", () => {
-    if (!state.currentProject) {
-      setStatus("No project selected.", true);
-      return;
-    }
     els.importMarkdownFile.click();
   });
   els.importMarkdownFile.addEventListener("change", () => importMarkdownFile(els.importMarkdownFile.files[0]));
@@ -812,12 +811,13 @@
     renderIdeas();
   });
   els.ideasList.addEventListener("click", async (event) => {
-    const checkbox = event.target.closest("[data-select-idea]");
-    if (checkbox) {
-      if (checkbox.checked) state.selectedIds.add(checkbox.dataset.selectIdea);
-      else state.selectedIds.delete(checkbox.dataset.selectIdea);
+    const row = event.target.closest(".idea-row");
+    if (state.selectMode && row) {
+      const id = row.dataset.id;
+      if (state.selectedIds.has(id)) state.selectedIds.delete(id);
+      else state.selectedIds.add(id);
       syncBulkActions();
-      els.ideasList.querySelector(`[data-id="${CSS.escape(checkbox.dataset.selectIdea)}"]`)?.classList.toggle("selected", checkbox.checked);
+      row.classList.toggle("selected", state.selectedIds.has(id));
       return;
     }
 
@@ -835,8 +835,8 @@
 
     const opener = event.target.closest("[data-open-idea]");
     if (!opener) return;
-    const row = opener.closest(".idea-row");
-    const expanded = row.querySelector(".idea-expanded");
+    const openerRow = opener.closest(".idea-row");
+    const expanded = openerRow.querySelector(".idea-expanded");
     expanded.hidden = !expanded.hidden;
   });
   els.createProject.addEventListener("submit", async (event) => {

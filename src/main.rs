@@ -116,6 +116,21 @@ struct ImportMarkdownResponse {
     ideas: Vec<Idea>,
 }
 
+#[derive(Debug, Serialize)]
+struct ImportBrainResponse {
+    imported: usize,
+    projects: usize,
+    ideas: Vec<Idea>,
+}
+
+#[derive(Debug)]
+struct BrainImportEntry {
+    project: String,
+    id: Option<String>,
+    created_at: Option<DateTime<Utc>>,
+    markdown: String,
+}
+
 #[derive(Debug, Deserialize)]
 struct ImportIdeaRequest {
     from_project: String,
@@ -179,6 +194,10 @@ async fn main() -> Result<()> {
         .route(
             "/api/projects/:project/import-markdown",
             post(import_markdown).layer(DefaultBodyLimit::max(IMPORT_BODY_LIMIT_BYTES)),
+        )
+        .route(
+            "/api/import-brain",
+            post(import_brain).layer(DefaultBodyLimit::max(IMPORT_BODY_LIMIT_BYTES)),
         )
         .route("/api/search", get(search_ideas))
         .route("/api/related", get(related_ideas))
@@ -529,6 +548,35 @@ async fn import_markdown(
     }
 }
 
+async fn import_brain(
+    headers: HeaderMap,
+    State(state): State<AppState>,
+    Json(req): Json<ImportMarkdownRequest>,
+) -> Response {
+    if !authenticated(&headers, &state) {
+        return json_error(StatusCode::UNAUTHORIZED, "login required");
+    }
+    match import_brain_markdown(&state, &req.markdown) {
+        Ok(ideas) => {
+            let projects = ideas
+                .iter()
+                .map(|idea| idea.project.as_str())
+                .collect::<std::collections::HashSet<_>>()
+                .len();
+            (
+                StatusCode::CREATED,
+                Json(ImportBrainResponse {
+                    imported: ideas.len(),
+                    projects,
+                    ideas,
+                }),
+            )
+                .into_response()
+        }
+        Err(err) => json_error(StatusCode::BAD_REQUEST, err.to_string()),
+    }
+}
+
 async fn search_ideas(
     headers: HeaderMap,
     State(state): State<AppState>,
@@ -812,6 +860,32 @@ fn save_markdown_idea(state: &AppState, project: &str, markdown: &str) -> Result
     })
 }
 
+fn save_imported_brain_idea(state: &AppState, entry: BrainImportEntry) -> Result<Idea> {
+    let project = clean_project_name(&entry.project)?;
+    let project_dir = project_path(state, &project)?;
+    fs::create_dir_all(&project_dir)?;
+    let title = validate_markdown(&entry.markdown)?;
+    let id = entry.id.unwrap_or_else(|| Uuid::new_v4().to_string());
+    let created_at = entry.created_at.unwrap_or_else(Utc::now);
+    let stored = format!(
+        "---\nid: {id}\ntitle: {}\ncreated_at: {}\n---\n\n{}",
+        one_line(&title),
+        created_at.to_rfc3339(),
+        entry.markdown.trim()
+    );
+    fs::write(
+        project_dir.join(format!("{}-{}.md", slugify(&title), id)),
+        stored,
+    )?;
+    Ok(Idea {
+        id,
+        project,
+        title,
+        markdown: entry.markdown.trim().to_string(),
+        created_at,
+    })
+}
+
 fn import_existing_idea(
     state: &AppState,
     to_project: &str,
@@ -961,6 +1035,74 @@ fn import_markdown_ideas(state: &AppState, project: &str, markdown: &str) -> Res
         saved.push(save_markdown_idea(state, project, &idea)?);
     }
     Ok(saved)
+}
+
+fn import_brain_markdown(state: &AppState, markdown: &str) -> Result<Vec<Idea>> {
+    let entries = split_brain_import_markdown(markdown)?;
+    let mut saved = Vec::with_capacity(entries.len());
+    for entry in entries {
+        saved.push(save_imported_brain_idea(state, entry)?);
+    }
+    Ok(saved)
+}
+
+fn split_brain_import_markdown(markdown: &str) -> Result<Vec<BrainImportEntry>> {
+    let metadata = brain_export_metadata(markdown);
+    if metadata.is_empty() {
+        return Err(anyhow!(
+            "BRAIN.md import must include project metadata comments from Export all"
+        ));
+    }
+    let ideas = split_import_markdown(markdown)?;
+    if ideas.len() != metadata.len() {
+        return Err(anyhow!(
+            "BRAIN.md import metadata does not match the number of ideas"
+        ));
+    }
+    ideas
+        .into_iter()
+        .zip(metadata)
+        .map(|(markdown, (line_number, project, created_at, id))| {
+            Ok(BrainImportEntry {
+                project: clean_project_name(&project)
+                    .with_context(|| format!("line {} has an invalid project", line_number + 1))?,
+                id,
+                created_at,
+                markdown,
+            })
+        })
+        .collect()
+}
+
+fn brain_export_metadata(
+    markdown: &str,
+) -> Vec<(usize, String, Option<DateTime<Utc>>, Option<String>)> {
+    markdown
+        .lines()
+        .enumerate()
+        .filter_map(|(idx, line)| parse_brain_export_comment(line).map(|data| (idx, data)))
+        .map(|(idx, (project, created_at, id))| (idx, project, created_at, id))
+        .collect()
+}
+
+fn parse_brain_export_comment(
+    line: &str,
+) -> Option<(String, Option<DateTime<Utc>>, Option<String>)> {
+    let trimmed = line.trim();
+    let inner = trimmed.strip_prefix("<!--")?.strip_suffix("-->")?.trim();
+    let mut project = None;
+    let mut created_at = None;
+    let mut id = None;
+    for part in inner.split('|') {
+        let (key, value) = part.split_once(':')?;
+        match key.trim() {
+            "project" => project = Some(value.trim().to_string()),
+            "created_at" => created_at = value.trim().parse::<DateTime<Utc>>().ok(),
+            "id" => id = Some(value.trim().to_string()),
+            _ => {}
+        }
+    }
+    project.map(|project| (project, created_at, id))
 }
 
 fn split_import_markdown(markdown: &str) -> Result<Vec<String>> {
@@ -1248,6 +1390,29 @@ mod tests {
         assert_eq!(ideas.len(), 2);
         assert_eq!(ideas[0], "# One\n\nFirst text.");
         assert_eq!(ideas[1], "# Two\n\nSecond text.");
+    }
+
+    #[test]
+    fn imports_full_brain_export_into_original_projects() {
+        let temp = tempfile::tempdir().unwrap();
+        let db = Connection::open_in_memory().unwrap();
+        migrate(&db).unwrap();
+        set_setting(&db, "brain_dir", temp.path().to_str().unwrap()).unwrap();
+        let state = AppState {
+            db: Arc::new(Mutex::new(db)),
+            secret: Arc::new([0_u8; 32]),
+            app_home: temp.path().join("app"),
+        };
+        let export = "<!-- project: alpha | created_at: 2026-06-13T15:00:00Z | id: one -->\n\n# One\n\nFirst text.\n\n---\n\n<!-- project: beta | created_at: 2026-06-13T15:01:00Z | id: two -->\n\n# Two\n\nSecond text.";
+
+        let imported = import_brain_markdown(&state, export).unwrap();
+
+        assert_eq!(imported.len(), 2);
+        assert_eq!(ideas_for_project(&state, "alpha", None).unwrap().len(), 1);
+        let beta = ideas_for_project(&state, "beta", None).unwrap();
+        assert_eq!(beta.len(), 1);
+        assert_eq!(beta[0].id, "two");
+        assert_eq!(beta[0].created_at.to_rfc3339(), "2026-06-13T15:01:00+00:00");
     }
 
     #[test]

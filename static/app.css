@@ -326,23 +326,20 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 
 .idea-row {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: 1fr;
   align-items: start;
   overflow: hidden;
 }
 
 .idea-row.selected {
   border-color: var(--accent-strong);
-}
-
-.idea-check {
-  padding: 18px 0 0 12px;
+  background: #180808;
 }
 
 .idea-main {
   width: 100%;
   min-width: 0;
-  padding: 13px;
+  padding: 8px 10px;
   border: 0;
   background: transparent;
   text-align: left;
@@ -350,23 +347,18 @@ button:disabled { cursor: not-allowed; opacity: 0.45; }
 
 .idea-main strong {
   display: block;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
   overflow-wrap: anywhere;
+  font: 0.92rem/1.25 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .idea-main span,
-.idea-main p,
 .project-main span,
 .settings-readout dt,
 .settings-readout dd,
 .bulk-actions span {
   color: var(--muted);
-  font-size: 0.84rem;
-}
-
-.idea-main p {
-  margin: 8px 0 0;
-  line-height: 1.45;
+  font-size: 0.78rem;
 }
 
 .idea-expanded {
